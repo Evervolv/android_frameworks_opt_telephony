@@ -881,4 +881,13 @@ public abstract class BaseCommands implements CommandsInterface {
     public void unregisterForRadioCapabilityChanged(Handler h) {
         mPhoneRadioCapabilityChangedRegistrants.remove(h);
     }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getLteOnGsmMode() {
+        return TelephonyManager.getLteOnGsmModeStatic();
+    }
+
 }
