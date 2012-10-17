@@ -119,6 +119,11 @@ public abstract class PhoneBase extends Handler implements Phone {
         }
     };
 
+    /**
+     * Indicates whether Out Of Service is considered as data call disconnect.
+     */
+    protected static final String PROPERTY_OOS_IS_DISCONNECT = "persist.telephony.oosisdc";
+
     // Key used to read and write the saved network selection numeric value
     public static final String NETWORK_SELECTION_KEY = "network_selection_key";
     // Key used to read and write the saved network selection operator name
@@ -285,6 +290,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     public String getActionAttached() {
         return mActionAttached;
     }
+
+    // Flag that indicates that Out Of Service is considered as data call disconnect
+    protected boolean mOosIsDisconnect = SystemProperties.getBoolean(
+            PROPERTY_OOS_IS_DISCONNECT, false);
 
     /**
      * Set a system property, unless we're in unit test mode
