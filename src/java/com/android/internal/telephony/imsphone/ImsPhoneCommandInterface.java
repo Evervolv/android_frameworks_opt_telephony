@@ -624,4 +624,7 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     @Override
     public void getModemActivityInfo(Message result) {
     }
+
+    public boolean needsOldRilFeature(String feature) { return false; }
+
 }
