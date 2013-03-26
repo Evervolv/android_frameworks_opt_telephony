@@ -439,7 +439,7 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void supplyNetworkDepersonalization(String netpin, Message result)  {
+    public void supplyDepersonalization(String netpin, String type, Message result)  {
         unimplemented(result);
     }
 
