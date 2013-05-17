@@ -43,35 +43,99 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 /**
- * As stands, the RIL supports calling get subscription source which can
- * handle both ruim and nv qc devices. The lteOnCdma property allows
- * for the devices to provision for multiple cdma dun types at run time. This
- * extension of shared merely fixes nuance issues arising from the differences
- * caused by embedded SIM and legacy CDMA.
+ * Qualcomm RIL for the Samsung family.
+ * Quad core Exynos4 with Qualcomm modem and later is supported
+ * Snapdragon S3 and later is supported
+ * This RIL is univerisal meaning it supports CDMA and GSM radio.
+ * Handles most GSM and CDMA cases.
  * {@hide}
  */
-public class SamsungCDMAQualcommRIL extends RIL implements
+public class SamsungQualcommRIL extends RIL implements
 CommandsInterface {
     private Object mSMSLock = new Object();
     private boolean mIsSendingSMS = false;
+    private boolean isGSM = false;
     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
 
-    public SamsungCDMAQualcommRIL(Context context, int networkMode,
+    public SamsungQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
     }
 
     @Override
+    protected Object
+    responseIccCardStatus(Parcel p) {
+        IccCardApplicationStatus appStatus;
+
+        IccCardStatus cardStatus = new IccCardStatus();
+        cardStatus.setCardState(p.readInt());
+        cardStatus.setUniversalPinState(p.readInt());
+        cardStatus.mGsmUmtsSubscriptionAppIndex = p.readInt();
+        cardStatus.mCdmaSubscriptionAppIndex = p.readInt();
+        cardStatus.mImsSubscriptionAppIndex = p.readInt();
+
+        int numApplications = p.readInt();
+
+        // limit to maximum allowed applications
+        if (numApplications > IccCardStatus.CARD_MAX_APPS) {
+            numApplications = IccCardStatus.CARD_MAX_APPS;
+        }
+        cardStatus.mApplications = new IccCardApplicationStatus[numApplications];
+
+        for (int i = 0 ; i < numApplications ; i++) {
+            appStatus = new IccCardApplicationStatus();
+
+
+
+            appStatus.app_type       = appStatus.AppTypeFromRILInt(p.readInt());
+            appStatus.app_state      = appStatus.AppStateFromRILInt(p.readInt());
+            appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(p.readInt());
+            if ((appStatus.app_state == IccCardApplicationStatus.AppState.APPSTATE_SUBSCRIPTION_PERSO) &&
+                ((appStatus.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_READY) ||
+                 (appStatus.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_UNKNOWN))) {
+                    // ridiculous hack for network SIM unlock pin
+                    appStatus.app_state = IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN;
+                    Log.d(LOG_TAG, "ca.app_state == AppState.APPSTATE_SUBSCRIPTION_PERSO");
+                    Log.d(LOG_TAG, "ca.perso_substate == PersoSubState.PERSOSUBSTATE_READY");
+                }
+            appStatus.aid            = p.readString();
+            appStatus.app_label      = p.readString();
+            appStatus.pin1_replaced  = p.readInt();
+            appStatus.pin1           = appStatus.PinStateFromRILInt(p.readInt());
+            appStatus.pin2           = appStatus.PinStateFromRILInt(p.readInt());
+            p.readInt(); // remaining_count_pin1 - pin1_num_retries
+            p.readInt(); // remaining_count_puk1 - puk1_num_retries
+            p.readInt(); // remaining_count_pin2 - pin2_num_retries
+            p.readInt(); // remaining_count_puk2 - puk2_num_retries
+            p.readInt(); // - perso_unblock_retries
+            cardStatus.mApplications[i] = appStatus;
+        }
+        return cardStatus;
+    }
+
+    @Override
     public void
     sendCdmaSms(byte[] pdu, Message result) {
+        smsLock();
+        super.sendCdmaSms(pdu, result);
+    }
+
+    @Override
+    public void
+        sendSMS (String smscPDU, String pdu, Message result) {
+        smsLock();
+        super.sendSMS(smscPDU, pdu, result);
+    }
+
+    private void smsLock(){
         // Do not send a new SMS until the response for the previous SMS has been received
         //   * for the error case where the response never comes back, time out after
-        //     30 seconds and just try the next CDMA_SEND_SMS
+        //     30 seconds and just try the next SEND_SMS
         synchronized (mSMSLock) {
             long timeoutTime  = SystemClock.elapsedRealtime() + SEND_SMS_TIMEOUT_IN_MS;
             long waitTimeLeft = SEND_SMS_TIMEOUT_IN_MS;
             while (mIsSendingSMS && (waitTimeLeft > 0)) {
-                Log.d(LOG_TAG, "sendCdmaSms() waiting for response of previous CDMA_SEND_SMS");
+                Log.d(LOG_TAG, "sendSMS() waiting for response of previous SEND_SMS");
                 try {
                     mSMSLock.wait(waitTimeLeft);
                 } catch (InterruptedException ex) {
@@ -80,12 +144,11 @@ CommandsInterface {
                 waitTimeLeft = timeoutTime - SystemClock.elapsedRealtime();
             }
             if (waitTimeLeft <= 0) {
-                Log.e(LOG_TAG, "sendCdmaSms() timed out waiting for response of previous CDMA_SEND_SMS");
+                Log.e(LOG_TAG, "sendSms() timed out waiting for response of previous CDMA_SEND_SMS");
             }
             mIsSendingSMS = true;
         }
 
-        super.sendCdmaSms(pdu, result);
     }
 
     @Override
@@ -101,6 +164,10 @@ CommandsInterface {
         for (int i = 0; i < numInts; i++) {
             response[i] = p.readInt();
         }
+        //gsm
+        response[0] &= 0xff; //gsmDbm
+
+        //cdma
         // Take just the least significant byte as the signal strength
         response[2] %= 256;
         response[4] %= 256;
@@ -110,88 +177,48 @@ CommandsInterface {
             // If LTE is not enabled, clear LTE results
             // 7-11 must be -1 for GSM signal strength to be used (see
             // frameworks/base/telephony/java/android/telephony/SignalStrength.java)
-            response[7] = -1;
-            response[8] = -1;
-            response[9] = -1;
-            response[10] = -1;
-            response[11] = -1;
-        } else {
-            response[8] *= -1;
+            response[8] = SignalStrength.INVALID;
+            response[9] = SignalStrength.INVALID;
+            response[10] = SignalStrength.INVALID;
+            response[11] = SignalStrength.INVALID;
+        }else{ // lte is gsm on samsung/qualcomm cdma stack
+            response[7] &= 0xff;
         }
 
-        return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], false);
+        return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], isGSM);
 
     }
 
+
     @Override
-    protected Object responseCallList(Parcel p) {
-        int num;
-        int voiceSettings;
-        ArrayList<DriverCall> response;
-        DriverCall dc;
+    protected void
+    processUnsolicited (Parcel p) {
+        Object ret;
+        int dataPosition = p.dataPosition(); // save off position within the Parcel
+        int response = p.readInt();
 
-        num = p.readInt();
-        response = new ArrayList<DriverCall>(num);
+        switch(response) {
+            case RIL_UNSOL_RIL_CONNECTED: // Fix for NV/RUIM setting on CDMA SIM devices
+                // skip getcdmascriptionsource as if qualcomm handles it in the ril binary
+                ret = responseInts(p);
+                setRadioPower(false, null);
+                setPreferredNetworkType(mPreferredNetworkType, null);
+                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+                samsungDriverCall = (needsOldRilFeature("newDriverCall") && !isGSM) || mRilVersion < 7 ? false : true;
+                isGSM = (mPhoneType != RILConstants.CDMA_PHONE);
+                break;
+            case RIL_UNSOL_NITZ_TIME_RECEIVED:
+                handleNitzTimeReceived(p);
+                break;
+            default:
+                // Rewind the Parcel
+                p.setDataPosition(dataPosition);
 
-        for (int i = 0; i < num; i++) {
-            dc = new DriverCall();
-
-            dc.state = DriverCall.stateFromCLCC(p.readInt());
-            dc.index = p.readInt();
-            dc.TOA = p.readInt();
-            dc.isMpty = (0 != p.readInt());
-            dc.isMT = (0 != p.readInt());
-            dc.als = p.readInt();
-            voiceSettings = p.readInt();
-            dc.isVoice = (0 == voiceSettings) ? false : true;
-            dc.isVoicePrivacy = (0 != p.readInt());
-            // Some Samsung magic data for Videocalls
-            // hack taken from smdk4210ril class
-            voiceSettings = p.readInt();
-            // printing it to cosole for later investigation
-            Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
-            dc.number = p.readString();
-            int np = p.readInt();
-            dc.numberPresentation = DriverCall.presentationFromCLIP(np);
-            dc.name = p.readString();
-            dc.namePresentation = p.readInt();
-            int uusInfoPresent = p.readInt();
-            if (uusInfoPresent == 1) {
-                dc.uusInfo = new UUSInfo();
-                dc.uusInfo.setType(p.readInt());
-                dc.uusInfo.setDcs(p.readInt());
-                byte[] userData = p.createByteArray();
-                dc.uusInfo.setUserData(userData);
-                riljLogv(String.format(
-                        "Incoming UUS : type=%d, dcs=%d, length=%d",
-                        dc.uusInfo.getType(), dc.uusInfo.getDcs(),
-                        dc.uusInfo.getUserData().length));
-                riljLogv("Incoming UUS : data (string)="
-                        + new String(dc.uusInfo.getUserData()));
-                riljLogv("Incoming UUS : data (hex): "
-                        + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
-            } else {
-                riljLogv("Incoming UUS : NOT present!");
-            }
-
-            // Make sure there's a leading + on addresses with a TOA of 145
-            dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number,
-                    dc.TOA);
-
-            response.add(dc);
-
-            if (dc.isVoicePrivacy) {
-                mVoicePrivacyOnRegistrants.notifyRegistrants();
-                riljLog("InCall VoicePrivacy is enabled");
-            } else {
-                mVoicePrivacyOffRegistrants.notifyRegistrants();
-                riljLog("InCall VoicePrivacy is disabled");
-            }
+                // Forward responses that we are not overriding to the super class
+                super.processUnsolicited(p);
+                return;
         }
 
-        Collections.sort(response);
-
-        return response;
     }
 
     // Workaround for Samsung CDMA "ring of death" bug:
@@ -249,6 +276,43 @@ CommandsInterface {
         }
 
         super.notifyRegistrantsCdmaInfoRec(infoRec);
+    }
+
+    private void
+    handleNitzTimeReceived(Parcel p) {
+        String nitz = (String)responseString(p);
+        //if (RILJ_LOGD) unsljLogRet(RIL_UNSOL_NITZ_TIME_RECEIVED, nitz);
+
+        // has bonus long containing milliseconds since boot that the NITZ
+        // time was received
+        long nitzReceiveTime = p.readLong();
+
+        Object[] result = new Object[2];
+
+        String fixedNitz = nitz;
+        String[] nitzParts = nitz.split(",");
+        if (nitzParts.length == 4) {
+            // 0=date, 1=time+zone, 2=dst, 3=garbage that confuses GsmServiceStateTracker (so remove it)
+            fixedNitz = nitzParts[0]+","+nitzParts[1]+","+nitzParts[2]+",";
+        }
+
+        result[0] = fixedNitz;
+        result[1] = Long.valueOf(nitzReceiveTime);
+
+        boolean ignoreNitz = SystemProperties.getBoolean(
+                        TelephonyProperties.PROPERTY_IGNORE_NITZ, false);
+
+        if (ignoreNitz) {
+            if (RILJ_LOGD) riljLog("ignoring UNSOL_NITZ_TIME_RECEIVED");
+        } else {
+            if (mNITZTimeRegistrant != null) {
+                mNITZTimeRegistrant
+                .notifyRegistrant(new AsyncResult (null, result, null));
+            } else {
+                // in case NITZ time registrant isnt registered yet
+                mLastNITZTimeInfo = result;
+            }
+        }
     }
 
     @Override
