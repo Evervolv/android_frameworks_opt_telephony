@@ -155,11 +155,20 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
     protected HandlerThread mSamsungExynos4RILThread;
     protected ConnectivityHandler mSamsungExynos4RILHandler;
     private AudioManager audioManager;
+    private boolean mIsGBModem = SystemProperties.getBoolean("ro.ril.gbmodem", false);
 
     public SamsungExynos4RIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
         audioManager = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
         mQANElements = 5;
+    }
+
+    static String
+    requestToString(int request) {
+        switch (request) {
+            case RIL_REQUEST_DIAL_EMERGENCY: return "DIAL_EMERGENCY";
+            default: return RIL.requestToString(request);
+        }
     }
 
     @Override
@@ -496,6 +505,7 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: ret = responseVoid(p); break;
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: ret = responseICC_IO(p); break;
             case RIL_REQUEST_VOICE_RADIO_TECH: ret = responseInts(p); break;
+            case RIL_REQUEST_DIAL_EMERGENCY: ret = responseVoid(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
                 //break;
@@ -546,6 +556,50 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
         }
 
         rr.release();
+    }
+
+    @Override
+    public void
+    dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
+        RILRequest rr;
+        if (PhoneNumberUtils.isEmergencyNumber(address)) {
+            dialEmergencyCall(address, clirMode, result);
+            return;
+        }
+
+        rr = RILRequest.obtain(RIL_REQUEST_DIAL, result);
+        rr.mp.writeString(address);
+        rr.mp.writeInt(clirMode);
+        rr.mp.writeInt(0); // UUS information is absent
+
+        if (uusInfo == null) {
+            rr.mp.writeInt(0); // UUS information is absent
+        } else {
+            rr.mp.writeInt(1); // UUS information is present
+            rr.mp.writeInt(uusInfo.getType());
+            rr.mp.writeInt(uusInfo.getDcs());
+            rr.mp.writeByteArray(uusInfo.getUserData());
+        }
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    public void
+    dialEmergencyCall(String address, int clirMode, Message result) {
+        RILRequest rr;
+        Log.v(LOG_TAG, "Emergency dial: " + address);
+
+        rr = RILRequest.obtain(RIL_REQUEST_DIAL_EMERGENCY, result);
+        rr.mp.writeString(address + "/");
+        rr.mp.writeInt(clirMode);
+        rr.mp.writeInt(0);
+        rr.mp.writeInt(0);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
     }
 
     @Override
@@ -841,22 +895,27 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
         */
 
         int mGsmSignalStrength = response[0]; // Valid values are (0-31, 99) as defined in TS 27.007 8.5
-        int mCdmaDbm = response[2];
+        Log.d(LOG_TAG, "responseSignalStrength (raw): gsmSignalStrength=" + mGsmSignalStrength);
+        mGsmSignalStrength = mGsmSignalStrength & 0xff; // Get the first 8 bits
+        Log.d(LOG_TAG, "responseSignalStrength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
 
-        Log.d(LOG_TAG, "responseSignalStength (unmodified): gsmSignalStrength=" + mGsmSignalStrength);
+        /* if mGsmSignalStrength isn't a valid value, use mCdmaDbm as fallback */
+        if (mGsmSignalStrength < 0 || (mGsmSignalStrength > 31 && response[0] != 99)) {
+            int mCdmaDbm = response[2];
+            Log.d(LOG_TAG, "responseSignalStrength-fallback (raw): gsmSignalStrength=" + mCdmaDbm);
 
-        if (mCdmaDbm < 0) {
-            mGsmSignalStrength = 99;
-        } else if (mCdmaDbm > 31) {
-            mGsmSignalStrength = 31;
-        } else {
-            mGsmSignalStrength = mCdmaDbm;
+	        if (mCdmaDbm < 0) {
+	            mGsmSignalStrength = 99;
+	        } else if (mCdmaDbm > 31 && mCdmaDbm != 99) {
+	            mGsmSignalStrength = 31;
+	        } else {
+	            mGsmSignalStrength = mCdmaDbm;
+	        }
+            Log.d(LOG_TAG, "responseSignalStrength-fallback (corrected): gsmSignalStrength=" + mGsmSignalStrength);
         }
 
-        Log.d(LOG_TAG, "responseSignalStength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
-
-        SignalStrength signalStrength = new SignalStrength(mGsmSignalStrength, response[1], mCdmaDbm,
-                response[3], response[4], response[5], response[6], isGsm);
+        SignalStrength signalStrength = new SignalStrength(mGsmSignalStrength, response[1], response[2],
+                    response[3], response[4], response[5], response[6], isGsm);
 
         return signalStrength;
     }
