@@ -22,7 +22,6 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.res.XmlResourceParser;
 import android.database.ContentObserver;
-import android.net.Uri;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Process;
@@ -109,7 +108,7 @@ public class SmsUsageMonitor {
     public static final int PREMIUM_SMS_PERMISSION_ALWAYS_ALLOW = 3;
 
     private final int mCheckPeriod;
-    private int mMaxAllowed;
+    private final int mMaxAllowed;
 
     private final HashMap<String, ArrayList<Long>> mSmsStamp =
             new HashMap<String, ArrayList<Long>>();
@@ -223,32 +222,30 @@ public class SmsUsageMonitor {
     /**
      * Observe the secure setting for enable flag
      */
-    private class SettingsObserver extends ContentObserver {
+    private static class SettingsObserver extends ContentObserver {
+        private final Context mContext;
+        private final AtomicBoolean mEnabled;
 
-        SettingsObserver(Handler handler) {
+        SettingsObserver(Handler handler, Context context, AtomicBoolean enabled) {
             super(handler);
+            mContext = context;
+            mEnabled = enabled;
+            onChange(false);
         }
 
         @Override
-        public void onChange(boolean selfChange, Uri uri) {
-            if (uri.equals(Settings.Global.getUriFor(Settings.Global.SMS_SHORT_CODE_CONFIRMATION))) {
-                mCheckEnabled.set(Settings.Global.getInt(mContext.getContentResolver(),
-                        Settings.Global.SMS_SHORT_CODE_CONFIRMATION, 1) != 0);
-            } else if (uri.equals(Settings.Global.getUriFor(Settings.Global.SMS_OUTGOING_CHECK_MAX_COUNT))) {
-                mMaxAllowed = Settings.Global.getInt(mContext.getContentResolver(),
-                        Settings.Global.SMS_OUTGOING_CHECK_MAX_COUNT, DEFAULT_SMS_MAX_COUNT);
-            }
+        public void onChange(boolean selfChange) {
+            mEnabled.set(Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.SMS_SHORT_CODE_CONFIRMATION, 1) != 0);
         }
     }
 
-    private class SettingsObserverHandler extends Handler {
-        SettingsObserverHandler(Context context) {
+    private static class SettingsObserverHandler extends Handler {
+        SettingsObserverHandler(Context context, AtomicBoolean enabled) {
             ContentResolver resolver = context.getContentResolver();
-            ContentObserver globalObserver = new SettingsObserver(this);
+            ContentObserver globalObserver = new SettingsObserver(this, context, enabled);
             resolver.registerContentObserver(Settings.Global.getUriFor(
                     Settings.Global.SMS_SHORT_CODE_CONFIRMATION), false, globalObserver);
-            resolver.registerContentObserver(Settings.Global.getUriFor(
-                Settings.Global.SMS_OUTGOING_CHECK_MAX_COUNT), false, globalObserver);
         }
     }
 
@@ -268,10 +265,7 @@ public class SmsUsageMonitor {
                 Settings.Global.SMS_OUTGOING_CHECK_INTERVAL_MS,
                 DEFAULT_SMS_CHECK_PERIOD);
 
-        mCheckEnabled.set(Settings.Global.getInt(resolver,
-                Settings.Global.SMS_SHORT_CODE_CONFIRMATION, 1) != 0);
-
-        mSettingsObserverHandler = new SettingsObserverHandler(mContext);
+        mSettingsObserverHandler = new SettingsObserverHandler(mContext, mCheckEnabled);
 
         loadPremiumSmsPolicyDb();
     }
