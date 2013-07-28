@@ -44,7 +44,7 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
             String scAddr = intent.getStringExtra("scAddr");
             String callingPackage = intent.getStringExtra("callingPackage");
             ArrayList<String> parts = intent.getStringArrayListExtra("parts");
-            ArrayList<PendingIntent> sentIntents = intent.getParcelableArrayListExtra("sentIntents");
+            ArrayList<PendingIntent> sentIntents = intent.getParcelableArrayListExtra("sentIntent");
             ArrayList<PendingIntent> deliveryIntents = intent.getParcelableArrayListExtra("deliveryIntents");
 
             if (intent.getBooleanExtra("multipart", false)) {
