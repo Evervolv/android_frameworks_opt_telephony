@@ -89,12 +89,6 @@ public class SmsMessage {
      */
     public static final String FORMAT_3GPP2 = "3gpp2";
 
-    /**
-     * Indicates a synthetic SMS message.
-     * @hide
-     */
-    public static final String FORMAT_SYNTHETIC = "synthetic";
-
     /** Contains actual SmsMessage. Only public for debugging and for framework layer.
      *
      * @hide
@@ -143,9 +137,6 @@ public class SmsMessage {
         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType();
         String format = (PHONE_TYPE_CDMA == activePhone) ?
                 SmsConstants.FORMAT_3GPP2 : SmsConstants.FORMAT_3GPP;
-        if (com.android.internal.telephony.SyntheticSmsMessage.isSyntheticPdu(pdu)) {
-            format = FORMAT_SYNTHETIC;
-        }
         return createFromPdu(pdu, format);
     }
 
@@ -166,8 +157,6 @@ public class SmsMessage {
             wrappedMessage = com.android.internal.telephony.cdma.SmsMessage.createFromPdu(pdu);
         } else if (SmsConstants.FORMAT_3GPP.equals(format)) {
             wrappedMessage = com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pdu);
-        } else if (FORMAT_SYNTHETIC.equals(format)) {
-            wrappedMessage = com.android.internal.telephony.SyntheticSmsMessage.createFromPdu(pdu);
         } else {
             Rlog.e(LOG_TAG, "createFromPdu(): unsupported message format " + format);
             return null;

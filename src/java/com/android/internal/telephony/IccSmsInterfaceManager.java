@@ -20,8 +20,6 @@ import android.Manifest;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.os.Binder;
-import android.os.RemoteException;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
@@ -277,9 +275,6 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
         return mSms;
     }
 
-    public void synthesizeMessages(String originatingAddress, String scAddress, List<String> messages, long timestampMillis) throws RemoteException {
-    }
-
     /**
      * Send a data based SMS to a specific application port.
      *
@@ -350,11 +345,9 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
     @Override
     public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        if (Binder.getCallingPid() != android.os.Process.myPid()) {
-            mPhone.getContext().enforceCallingPermission(
-                    Manifest.permission.SEND_SMS,
-                    "Sending SMS message");
-        }
+        mPhone.getContext().enforceCallingPermission(
+                Manifest.permission.SEND_SMS,
+                "Sending SMS message");
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
                 " text='"+ text + "' sentIntent=" +
@@ -396,11 +389,9 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
     public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) {
-        if (Binder.getCallingPid() != android.os.Process.myPid()) {
-            mPhone.getContext().enforceCallingPermission(
-                    Manifest.permission.SEND_SMS,
-                    "Sending SMS message");
-        }
+        mPhone.getContext().enforceCallingPermission(
+                Manifest.permission.SEND_SMS,
+                "Sending SMS message");
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             int i = 0;
             for (String part : parts) {
