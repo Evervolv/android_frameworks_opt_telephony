@@ -502,7 +502,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         mIsSubscriptionFromRuim =
             (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM);
         saveCdmaSubscriptionSource(newSubscriptionSource);
-        if (!mIsSubscriptionFromRuim) {
+        if (mCi.needsOldRilFeature("skipdatareg")) {
             // NV is ready when subscription source is NV
             sendMessage(obtainMessage(EVENT_NV_READY));
         }
@@ -674,6 +674,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 mNewSS.setState (regCodeToServiceState(registrationState));
 
                 mNewSS.setRilVoiceRadioTechnology(radioTechnology);
+
+                if (mCi.needsOldRilFeature("skipdatareg")) {
+                    mNewSS.setDataRegState(radioTechnologyToDataServiceState(radioTechnology));
+                    mNewSS.setRilDataRadioTechnology(radioTechnology);
+                }
 
                 mNewSS.setCssIndicator(cssIndicator);
                 mNewSS.setSystemAndNetworkId(systemId, networkId);
@@ -892,10 +897,12 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             mCi.getVoiceRegistrationState(
                     obtainMessage(EVENT_POLL_STATE_REGISTRATION_CDMA, mPollingContext));
 
-            mPollingContext[0]++;
-            // RIL_REQUEST_DATA_REGISTRATION_STATE
-            mCi.getDataRegistrationState(obtainMessage(EVENT_POLL_STATE_GPRS,
-                                        mPollingContext));
+            if (!mCi.needsOldRilFeature("skipdatareg")) {
+                mPollingContext[0]++;
+                // RIL_REQUEST_DATA_REGISTRATION_STATE
+                mCi.getDataRegistrationState(obtainMessage(EVENT_POLL_STATE_GPRS,
+                                            mPollingContext));
+            }
             break;
         }
     }
