@@ -502,7 +502,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         mIsSubscriptionFromRuim =
             (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM);
         saveCdmaSubscriptionSource(newSubscriptionSource);
-        if (mCi.needsOldRilFeature("skipdatareg")) {
+        if (!mIsSubscriptionFromRuim || mCi.needsOldRilFeature("skipdatareg")) {
             // NV is ready when subscription source is NV
             sendMessage(obtainMessage(EVENT_NV_READY));
         }
