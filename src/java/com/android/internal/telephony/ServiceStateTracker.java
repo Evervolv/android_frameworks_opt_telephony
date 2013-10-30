@@ -721,6 +721,10 @@ public abstract class ServiceStateTracker extends Handler {
         }
     }
 
+    public String getOperatorNumeric() {
+        return mSS.getOperatorNumeric();
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("ServiceStateTracker:");
         pw.println(" mSS=" + mSS);
