@@ -1936,12 +1936,13 @@ public final class DcTracker extends DcTrackerBase {
         mAllApnSettings = new ArrayList<ApnSetting>();
         IccRecords r = mIccRecords.get();
         String operator = (r != null) ? r.getOperatorNumeric() : "";
-
-        if (mCdmaSsm.getCdmaSubscriptionSource() ==
-                CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
-            operator = SystemProperties.get(
-                                CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC,
-                                mPhone.getServiceStateTracker().getOperatorNumeric());
+        if (mCdmaSsm != null) {
+            if (mCdmaSsm.getCdmaSubscriptionSource() ==
+                    CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
+                operator = SystemProperties.get(
+                                    CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC,
+                                    mPhone.getServiceStateTracker().getOperatorNumeric());
+            }
         }
 
         if (operator != null) {
@@ -2325,9 +2326,11 @@ public final class DcTracker extends DcTrackerBase {
                 newIccRecords.registerForRecordsLoaded(
                         this, DctConstants.EVENT_RECORDS_LOADED, null);
             }
-        } else if (mCdmaSsm.getCdmaSubscriptionSource() ==
+        } else if (mCdmaSsm != null) {
+            if (mCdmaSsm.getCdmaSubscriptionSource() ==
                 CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
-            onRecordsLoaded(Phone.REASON_NV_READY);
+                    onRecordsLoaded(Phone.REASON_NV_READY);
+            }
         }
     }
 
