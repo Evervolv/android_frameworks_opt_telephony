@@ -716,17 +716,7 @@ public abstract class SMSDispatcher extends Handler {
 
         // Get calling app package name via UID from Binder call
         PackageManager pm = mContext.getPackageManager();
-        int callingUid = Binder.getCallingUid();
-        // Special case: We're being proxied by the telephony stack itself,
-        // so use the intent generator's UID if one exists
-        String[] packageNames;
-
-        if (callingUid == android.os.Process.PHONE_UID && sentIntent != null &&
-                sentIntent.getCreatorPackage() != null) {
-            packageNames = new String[] { sentIntent.getCreatorPackage() };
-        } else {
-            packageNames = pm.getPackagesForUid(callingUid);
-        }
+        String[] packageNames = pm.getPackagesForUid(Binder.getCallingUid());
 
         if (packageNames == null || packageNames.length == 0) {
             // Refuse to send SMS if we can't get the calling package name.
@@ -1131,17 +1121,7 @@ public abstract class SMSDispatcher extends Handler {
             PendingIntent deliveryIntent, String format) {
         // Get calling app package name via UID from Binder call
         PackageManager pm = mContext.getPackageManager();
-        int callingUid = Binder.getCallingUid();
-        // Special case: We're being proxied by the telephony stack itself,
-        // so use the intent generator's UID if one exists
-        String[] packageNames;
-
-        if (callingUid == android.os.Process.PHONE_UID && sentIntent != null &&
-                sentIntent.getCreatorPackage() != null) {
-            packageNames = new String[] { sentIntent.getCreatorPackage() };
-        } else {
-            packageNames = pm.getPackagesForUid(callingUid);
-        }
+        String[] packageNames = pm.getPackagesForUid(Binder.getCallingUid());
 
         // Get package info via packagemanager
         PackageInfo appInfo = null;
