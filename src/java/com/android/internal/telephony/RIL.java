@@ -268,7 +268,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     // When we are testing emergency calls
     AtomicBoolean mTestingEmergencyCall = new AtomicBoolean(false);
 
-    private Integer mInstanceId;
+    protected Integer mInstanceId;
 
     // Number of per-network elements expected in QUERY_AVAILABLE_NETWORKS's response.
     // 4 elements is default, but many RILs actually return 5, making it impossible to
@@ -504,10 +504,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return messageLength;
     }
 
-    class RILReceiver implements Runnable {
+    protected class RILReceiver implements Runnable {
         byte[] buffer;
 
-        RILReceiver() {
+        protected RILReceiver() {
             buffer = new byte[RIL_MAX_COMMAND_BYTES];
         }
 
@@ -680,7 +680,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             riljLog("Not starting RILReceiver: wifi-only");
         } else {
             riljLog("Starting RILReceiver" + mInstanceId);
-            mReceiver = new RILReceiver();
+            mReceiver = createRILReceiver();
             mReceiverThread = new Thread(mReceiver, "RILReceiver" + mInstanceId);
             mReceiverThread.start();
 
@@ -700,6 +700,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         TelephonyDevController tdc = TelephonyDevController.getInstance();
         tdc.registerRIL(this);
+    }
+
+    protected RILReceiver createRILReceiver() {
+        return new RILReceiver();
     }
 
     //***** CommandsInterface implementation
@@ -3504,7 +3508,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return new IccIoResult(sw1, sw2, s);
     }
 
-    private Object
+    protected Object
     responseICC_IOBase64(Parcel p) {
         int sw1, sw2;
         Message ret;
@@ -4038,7 +4042,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
-   private Object
+   protected Object
    responseHardwareConfig(Parcel p) {
       int num;
       ArrayList<HardwareConfig> response;
