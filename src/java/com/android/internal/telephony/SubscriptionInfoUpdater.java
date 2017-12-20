@@ -56,6 +56,7 @@ import android.text.TextUtils;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.os.BackgroundThread;
 import com.android.internal.telephony.euicc.EuiccController;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -135,6 +136,11 @@ public class SubscriptionInfoUpdater extends Handler {
 
     // TODO: The SubscriptionController instance should be passed in here from PhoneFactory
     // rather than invoking the static getter all over the place.
+    public SubscriptionInfoUpdater(
+            Context context, Phone[] phone, CommandsInterface[] ci) {
+        this(BackgroundThread.get().getLooper(), context, phone, ci);
+    }
+
     public SubscriptionInfoUpdater(
             Looper looper, Context context, Phone[] phone, CommandsInterface[] ci) {
         this(looper, context, phone, ci,
