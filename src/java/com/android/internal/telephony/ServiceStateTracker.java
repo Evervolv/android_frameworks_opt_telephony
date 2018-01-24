@@ -146,7 +146,7 @@ public class ServiceStateTracker extends Handler {
      * expected responses in this pollingContext.
      */
     @VisibleForTesting
-    public int[] mPollingContext;
+    protected int[] mPollingContext;
     private boolean mDesiredPowerState;
 
     /**
@@ -346,7 +346,7 @@ public class ServiceStateTracker extends Handler {
     };
 
     //Common
-    private final GsmCdmaPhone mPhone;
+    protected final GsmCdmaPhone mPhone;
 
     public CellLocation mCellLoc;
     private CellLocation mNewCellLoc;
@@ -1792,7 +1792,7 @@ public class ServiceStateTracker extends Handler {
         return cdmaRoaming && !isSameOperatorNameFromSimAndSS(s);
     }
 
-    void handlePollStateResultMessage(int what, AsyncResult ar) {
+    protected void handlePollStateResultMessage(int what, AsyncResult ar) {
         int ints[];
         switch (what) {
             case EVENT_POLL_STATE_REGISTRATION: {
