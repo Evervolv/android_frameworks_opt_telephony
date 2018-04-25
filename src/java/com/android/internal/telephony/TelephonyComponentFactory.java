@@ -33,6 +33,7 @@ import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 
+import com.android.internal.os.BackgroundThread;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DataEnabledSettings;
@@ -451,6 +452,12 @@ public class TelephonyComponentFactory {
             Phone[] phones, CommandsInterface[] ci) {
         Rlog.i(TAG, "makeSubscriptionInfoUpdater");
         return new SubscriptionInfoUpdater(looper, context, phones, ci);
+    }
+
+    public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Context context,
+            Phone[] phones, CommandsInterface[] ci) {
+        Rlog.i(TAG, "makeSubscriptionInfoUpdater");
+        return makeSubscriptionInfoUpdater(BackgroundThread.get().getLooper(), context, phones, ci);
     }
 
     public PhoneSwitcher makePhoneSwitcher(int maxActivePhones, int numPhones, Context context,
