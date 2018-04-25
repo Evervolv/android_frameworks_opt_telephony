@@ -25,6 +25,7 @@ import android.os.ServiceManager;
 import android.telephony.AccessNetworkConstants.TransportType;
 import android.telephony.Rlog;
 
+import com.android.internal.os.BackgroundThread;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
@@ -228,6 +229,12 @@ public class TelephonyComponentFactory {
             Phone[] phones, CommandsInterface[] ci) {
         Rlog.d(LOG_TAG, "makeSubscriptionInfoUpdater");
         return new SubscriptionInfoUpdater(looper, context, phones, ci);
+    }
+
+    public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Context context,
+            Phone[] phones, CommandsInterface[] ci) {
+        Rlog.d(LOG_TAG, "makeSubscriptionInfoUpdater");
+        return makeSubscriptionInfoUpdater(BackgroundThread.get().getLooper(), context, phones, ci);
     }
 
     public void makeExtTelephonyClasses(Context context,
