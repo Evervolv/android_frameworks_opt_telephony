@@ -209,6 +209,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     AtomicBoolean mTestingEmergencyCall = new AtomicBoolean(false);
 
     final Integer mPhoneId;
+    private List<String> mOldRilFeatures;
 
     /**
      * A set that records if radio service is disabled in hal for
@@ -579,6 +580,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (isRadioBugDetectionEnabled()) {
             mRadioBugDetector = new RadioBugDetector(context, mPhoneId);
         }
+
+        final String oldRilFeatures = SystemProperties.get("ro.telephony.ril.config", "");
+        mOldRilFeatures = Arrays.asList(oldRilFeatures.split(","));
 
         ConnectivityManager cm = (ConnectivityManager)context.getSystemService(
                 Context.CONNECTIVITY_SERVICE);
@@ -6132,5 +6136,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     public HalVersion getHalVersion() {
         return mRadioVersion;
+    }
+
+    public boolean needsOldRilFeature(String feature) {
+        return mOldRilFeatures.contains(feature);
     }
 }
