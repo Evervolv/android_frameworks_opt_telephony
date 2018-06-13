@@ -62,6 +62,7 @@ import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
+import com.android.internal.telephony.RIL;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyStatsLog;
 import com.android.internal.telephony.cat.CatService;
@@ -1123,8 +1124,8 @@ public class UiccProfile extends IccCard {
                 setCurrentAppType(ServiceState.isGsm(mRadioTech));
             }
 
-            if (mCi.needsOldRilFeature("simactivation")) {
-                if (mCardState == CardState.CARDSTATE_PRESENT) {
+            if (needsSimActivation()) {
+                if (ics.mCardState == CardState.CARDSTATE_PRESENT) {
                     if (!mDefaultAppsActivated) {
                         activateDefaultApps();
                         mDefaultAppsActivated = true;
@@ -1138,6 +1139,13 @@ public class UiccProfile extends IccCard {
 
             updateIccAvailability(true);
         }
+    }
+
+    private boolean needsSimActivation() {
+        if (mCi instanceof RIL) {
+            return ((RIL) mCi).needsOldRilFeature("simactivation");
+        }
+        return false;
     }
 
     private void activateDefaultApps() {
