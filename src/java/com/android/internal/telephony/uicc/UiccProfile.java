@@ -105,6 +105,8 @@ public class UiccProfile extends IccCard {
     private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
     private boolean mDisposed = false;
 
+    private boolean m3GPPAppActivated, m3GPP2AppActivated;
+
     private RegistrantList mCarrierPrivilegeRegistrants = new RegistrantList();
     private RegistrantList mOperatorBrandOverrideRegistrants = new RegistrantList();
 
@@ -920,6 +922,37 @@ public class UiccProfile extends IccCard {
             }
 
             sanitizeApplicationIndexesLocked();
+
+            if (mGsmUmtsSubscriptionAppIndex < 0
+                    && mCdmaSubscriptionAppIndex < 0
+                    && mCardState == CardState.CARDSTATE_PRESENT
+                    && mCi.needsOldRilFeature("simactivation")) {
+                // Activate/Deactivate first 3GPP and 3GPP2 app in the SIM, if available
+                for (int i = 0; i < mUiccApplications.length; i++) {
+                    if (mUiccApplications[i] == null) {
+                        continue;
+                    }
+                     AppType appType = mUiccApplications[i].getType();
+                    if (!m3GPPAppActivated &&
+                            (appType == AppType.APPTYPE_USIM || appType == AppType.APPTYPE_SIM)) {
+                        mCi.setUiccSubscription(i, true, null);
+                        m3GPPAppActivated = true;
+                    } else if (!m3GPP2AppActivated &&
+                            (appType == AppType.APPTYPE_CSIM || appType == AppType.APPTYPE_RUIM)) {
+                        mCi.setUiccSubscription(i, true, null);
+                        m3GPP2AppActivated = true;
+                    }
+                     if (m3GPPAppActivated && m3GPP2AppActivated) {
+                        break;
+                    }
+                }
+            } else {
+                // SIM removed, reset activation flags to make sure
+                // to re-run the activation at the next insertion
+                m3GPPAppActivated = false;
+                m3GPP2AppActivated = false;
+            }
+
             updateIccAvailability(true);
         }
     }
