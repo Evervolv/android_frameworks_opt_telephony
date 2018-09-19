@@ -22,6 +22,7 @@ import android.annotation.NonNull;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.NetworkScanRequest;
 import android.telephony.RadioAccessSpecifier;
@@ -557,6 +558,13 @@ public class RadioNetworkProxy extends RadioServiceProxy {
     public void setNetworkSelectionModeManual(int serial, String operatorNumeric, int ran)
             throws RemoteException {
         if (isEmpty()) return;
+
+        boolean oldMncMccFormat = SystemProperties.getBoolean(
+                "ro.telephony.use_old_mnc_mcc_format", false);
+        if (oldMncMccFormat) {
+            operatorNumeric += "+";
+        }
+
         if (isAidl()) {
             mNetworkProxy.setNetworkSelectionModeManual(serial, operatorNumeric,
                     RILUtils.convertToHalAccessNetworkAidl(ran));
