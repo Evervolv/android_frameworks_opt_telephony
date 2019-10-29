@@ -506,6 +506,10 @@ public class MultiSimSettingController extends Handler {
         sendSubChangeNotificationIfNeeded(change, dataSelected, voiceSelected, smsSelected);
     }
 
+    protected void updateDefaults(boolean init) {
+        updateDefaults();
+    }
+
     @PrimarySubChangeType
     private int updatePrimarySubListAndGetChangeType(List<SubscriptionInfo> activeSubList) {
         // Update mPrimarySubList. Opportunistic subscriptions can't be default

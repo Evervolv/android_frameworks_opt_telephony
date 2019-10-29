@@ -625,6 +625,19 @@ public class PhoneSwitcher extends Handler {
         }
     }
 
+    protected boolean isEmergency() {
+        if (isInEmergencyCallbackMode()) return true;
+        for (Phone p : mPhones) {
+            if (p == null) continue;
+            if (p.isInEmergencyCall()) return true;
+            Phone imsPhone = p.getImsPhone();
+            if (imsPhone != null && imsPhone.isInEmergencyCall()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean isInEmergencyCallbackMode() {
         for (Phone p : mPhones) {
             if (p == null) continue;
@@ -982,6 +995,11 @@ public class PhoneSwitcher extends Handler {
             }
         }
         return phoneId;
+    }
+
+    protected int getSubIdFromNetworkRequest(NetworkRequest networkRequest) {
+        NetworkSpecifier specifier = networkRequest.networkCapabilities.getNetworkSpecifier();
+        return getSubIdFromNetworkSpecifier(specifier);
     }
 
     private int getSubIdFromNetworkSpecifier(NetworkSpecifier specifier) {
