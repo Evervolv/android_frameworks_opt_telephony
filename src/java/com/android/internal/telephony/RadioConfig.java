@@ -37,6 +37,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.os.Trace;
 import android.os.WorkSource;
 import android.telephony.TelephonyManager;
@@ -79,6 +80,9 @@ public class RadioConfig extends Handler {
     protected Registrant mSimultaneousCallingSupportStatusRegistrant;
 
     private boolean isMobileDataCapable(Context context) {
+        if(SystemProperties.getBoolean("ro.radio.noril", false)) {
+            return false;
+        }
         final TelephonyManager tm = context.getSystemService(TelephonyManager.class);
         return tm != null && tm.isDataCapable();
     }
