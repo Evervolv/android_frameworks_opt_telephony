@@ -2543,8 +2543,8 @@ public class DcTracker extends Handler {
         }
     }
 
-    private void cleanUpConnectionsAndClearApnSettings() {
-        if (DBG) log("reset APN List and clean up data connections");
+    private void onSimAbsent() {
+        if (DBG) log("onSimAbsent");
 
         mConfigReady = false;
         cleanUpAllConnectionsInternal(true, Phone.REASON_SIM_NOT_READY);
@@ -2552,12 +2552,6 @@ public class DcTracker extends Handler {
         mAutoAttachOnCreationConfig = false;
         // Clear auto attach as modem is expected to do a new attach once SIM is ready
         mAutoAttachEnabled.set(false);
-    }
-
-    private void onSimAbsent() {
-        if (DBG) log("onSimAbsent");
-
-        cleanUpConnectionsAndClearApnSettings();
         // In no-sim case, we should still send the emergency APN to the modem, if there is any.
         createAllApnList();
         setDataProfilesAsNeeded();
@@ -2572,9 +2566,6 @@ public class DcTracker extends Handler {
 
         if (mSimState == TelephonyManager.SIM_STATE_ABSENT) {
             onSimAbsent();
-        } else if (mSimState == TelephonyManager.SIM_STATE_NOT_READY) {
-        /*After SIM REFRESH, SIM records might get disposed so APNs need to be reset.*/
-            cleanUpConnectionsAndClearApnSettings();
         } else if (mSimState == TelephonyManager.SIM_STATE_LOADED) {
             mDataThrottler.reset();
             if (mConfigReady) {

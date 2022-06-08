@@ -5703,8 +5703,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         RILRequest rr = obtainRequest(RIL_REQUEST_ENABLE_UICC_APPLICATIONS,
                 onCompleteMessage, mRILDefaultWorkSource);
 
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) +
-                " " + enable);
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
         try {
             radioProxy15.enableUiccApplications(rr.mSerial, enable);
